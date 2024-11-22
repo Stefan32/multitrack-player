@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multitrack Video Player</title>
+    <style>
+        .player-controls, .track-controls {
+            margin-top: 10px;
+        }
+        .track-controls div {
+            margin: 10px 0;
+        }
+        .track-controls button {
+            margin: 0 5px;
+        }
+        .muted {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .soloed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+
+<div>
+    <!-- Video Player -->
+    <video id="video" width="600" controls>
+        <source src="TestSyncVideo.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Audio Tracks -->
+    <audio id="audio1" src="TestSyncVideoBT.mp3" preload="auto"></audio>
+    <audio id="audio2" src="TestSyncVideoDRMS.mp3" preload="auto"></audio>
+     <!--<audio id="audio3" src="audio3.mp3" preload="auto"></audio> -->
+
+    <!-- Player Controls -->
+    <div class="player-controls">
+        <button onclick="playAll()">Play</button>
+        <button onclick="pauseAll()">Pause</button>
+    </div>
+
+    <!-- Track Controls -->
+    <div class="track-controls">
+        <div id="track1">
+            Backtrack
+            <button onclick="muteToggle(1)">Mute</button>
+            <button onclick="soloToggle(1)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(1, this.value)">
+        </div>
+        <div id="track2">
+            Drums
+            <button onclick="muteToggle(2)">Mute</button>
+            <button onclick="soloToggle(2)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(2, this.value)">
+        </div>
+        <div id="track3">
+            Track 3
+            <button onclick="muteToggle(3)">Mute</button>
+            <button onclick="soloToggle(3)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(3, this.value)">
+        </div>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const audioTracks = [
+        document.getElementById('audio1'),
+        document.getElementById('audio2'),
+        document.getElementById('audio3')
+    ];
+    const trackElements = [
+        document.getElementById('track1'),
+        document.getElementById('track2'),
+        document.getElementById('track3')
+    ];
+    let soloedTrack = null;
+
+    // Play all tracks in sync if they exist
+    function playAll() {
+        video.play();
+        audioTracks.forEach(audio => {
+            if (audio) audio.play();
+        });
+    }
+
+    // Pause all tracks in sync if they exist
+    function pauseAll() {
+        video.pause();
+        audioTracks.forEach(audio => {
+            if (audio) audio.pause();
+        });
+    }
+
+    // Sync audio tracks with video time if they exist
+    video.addEventListener('timeupdate', () => {
+        audioTracks.forEach(audio => {
+            if (audio && Math.abs(audio.currentTime - video.currentTime) > 0.1) {
+                audio.currentTime = video.currentTime;
+            }
+        });
+    });
+
+    video.addEventListener('play', playAll);
+    video.addEventListener('pause', pauseAll);
+
+    // Mute or unmute individual track and update style
+    function muteToggle(trackNumber) {
+        const audio = audioTracks[trackNumber - 1];
+        const trackElement = trackElements[trackNumber - 1];
+        if (audio) {
+            audio.muted = !audio.muted;
+            trackElement.classList.toggle('muted', audio.muted);
+        }
+    }
+
+    // Solo or unsolo individual track and update style
+    function soloToggle(trackNumber) {
+        const audio = audioTracks[trackNumber - 1];
+        const trackElement = trackElements[trackNumber - 1];
+
+        if (soloedTrack === trackNumber) {
+            // Unsolo if it's already soloed
+            soloedTrack = null;
+            audioTracks.forEach((audio, index) => {
+                if (audio) {
+                    audio.muted = false;
+                    trackElements[index].classList.remove('soloed');
+	trackElements[index].classList.remove('muted');
+                }
+            });
+        } else {
+            // Solo the selected track
+            soloedTrack = trackNumber;
+            audioTracks.forEach((audio, index) => {
+                if (audio) {
+                    audio.muted = (index !== trackNumber - 1);
+                    trackElements[index].classList.toggle('soloed', index === trackNumber - 1);
+                    trackElements[index].classList.toggle('muted', index !== trackNumber - 1);
+                }
+            });
+        }
+    }
+
+    // Set volume for individual track
+    function setVolume(trackNumber, volume) {
+        const audio = audioTracks[trackNumber - 1];
+        if (audio) {
+            audio.volume = volume;
+        }
+    }
+</script>
+
+</body>
+</html>
