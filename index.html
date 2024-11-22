@@ -1,167 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Multitrack Player</title>
- 
-  <script src="https://cdn.jsdelivr.net/npm/soundtouch@5.0.0/discovery.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-
-    .track-controls {
-      margin: 10px 0;
-      padding: 10px;
-      background: #fff;
-      border-radius: 5px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-
-    .track-controls button {
-      margin-right: 10px;
-      padding: 5px 10px;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-    }
-
-    .muted {
-      background-color: gray;
-      color: white;
-    }
-
-    .soloed {
-      border: 2px solid yellow;
-    }
-
-    .volume-slider {
-      margin-left: 10px;
-    }
-
-    video {
-      display: block;
-      margin: 20px 0;
-      width: 100%;
-      max-width: 640px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multitrack Video Player</title>
+    <style>
+        .player-controls, .track-controls {
+            margin-top: 10px;
+        }
+        .track-controls div {
+            margin: 10px 0;
+        }
+        .track-controls button {
+            margin: 0 5px;
+        }
+        .muted {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .soloed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
 </head>
 <body>
-  <h1>Multitrack Audio and Video Player</h1>
-  <video id="video" controls>
-    <source src="TestSyncVideo.mp4" type="video/mp4">
-    Your browser does not support the video tag.
-  </video>
 
-  <!-- Audio Tracks -->
-  <div id="tracks">
-    <div class="track-controls" data-track="1">
-      <p>Track 1</p>
-      <button class="mute-btn">Mute</button>
-      <button class="solo-btn">Solo</button>
-      <label>
-        Volume: <input type="range" min="0" max="1" step="0.01" class="volume-slider">
-      </label>
-    </div>
-    <div class="track-controls" data-track="2">
-      <p>Track 2</p>
-      <button class="mute-btn">Mute</button>
-      <button class="solo-btn">Solo</button>
-      <label>
-        Volume: <input type="range" min="0" max="1" step="0.01" class="volume-slider">
-      </label>
-    </div>
-    <div class="track-controls" data-track="3">
-      <p>Track 3</p>
-      <button class="mute-btn">Mute</button>
-      <button class="solo-btn">Solo</button>
-      <label>
-        Volume: <input type="range" min="0" max="1" step="0.01" class="volume-slider">
-      </label>
-    </div>
-  </div>
+<div>
+    <!-- Video Player -->
+    <video id="video" width="600" controls>
+        <source src="TestSyncVideo.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
 
-  <!-- Speed Control -->
-  <div>
-    <label for="speedControl">Playback Speed:</label>
-    <input type="range" id="speedControl" min="0.5" max="2.0" step="0.1" value="1.0">
-  </div>
+    <!-- Audio Tracks -->
+    <audio id="audio1" src="TestSyncVideoBT.mp3" preload="auto"></audio>
+    <audio id="audio2" src="TestSyncVideoDRMS.mp3" preload="auto"></audio>
+     <!--<audio id="audio3" src="audio3.mp3" preload="auto"></audio> -->
 
-  <script>
-    // Variables
+    <!-- Player Controls -->
+    <div class="player-controls">
+        <button onclick="playAll()">Play</button>
+        <button onclick="pauseAll()">Pause</button>
+    </div>
+
+    <!-- Track Controls -->
+    <div class="track-controls">
+        <div id="track1">
+            Backtrack
+            <button onclick="muteToggle(1)">Mute</button>
+            <button onclick="soloToggle(1)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(1, this.value)">
+        </div>
+        <div id="track2">
+            Drums
+            <button onclick="muteToggle(2)">Mute</button>
+            <button onclick="soloToggle(2)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(2, this.value)">
+        </div>
+        <div id="track3">
+            Track 3
+            <button onclick="muteToggle(3)">Mute</button>
+            <button onclick="soloToggle(3)">Solo</button>
+            <input type="range" min="0" max="1" step="0.1" value="1" onchange="setVolume(3, this.value)">
+        </div>
+    </div>
+</div>
+
+<script>
     const video = document.getElementById('video');
-    const tracks = [
-      new Audio('audio1.mp3'),
-      new Audio('audio2.mp3'),
-      new Audio('audio3.mp3')
+    const audioTracks = [
+        document.getElementById('audio1'),
+        document.getElementById('audio2'),
+        document.getElementById('audio3')
     ];
-    const soundtouchProcessors = [];
-    const soloedTrack = { index: null };
+    const trackElements = [
+        document.getElementById('track1'),
+        document.getElementById('track2'),
+        document.getElementById('track3')
+    ];
+    let soloedTrack = null;
 
-    // Initialize SoundTouch.js for each track
-    tracks.forEach((track, index) => {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioContext.createMediaElementSource(track);
-      const soundtouch = new soundtouchjs.SoundTouch();
-      const simpleFilter = new soundtouchjs.SimpleFilter(track, soundtouch);
-      soundtouchProcessors.push({ soundtouch, simpleFilter, audioContext, source });
-      source.connect(audioContext.destination);
+    // Play all tracks in sync if they exist
+    function playAll() {
+        video.play();
+        audioTracks.forEach(audio => {
+            if (audio) audio.play();
+        });
+    }
+
+    // Pause all tracks in sync if they exist
+    function pauseAll() {
+        video.pause();
+        audioTracks.forEach(audio => {
+            if (audio) audio.pause();
+        });
+    }
+
+    // Sync audio tracks with video time if they exist
+    video.addEventListener('timeupdate', () => {
+        audioTracks.forEach(audio => {
+            if (audio && Math.abs(audio.currentTime - video.currentTime) > 0.1) {
+                audio.currentTime = video.currentTime;
+            }
+        });
     });
 
-    // Sync audio with video
-    video.addEventListener('play', () => tracks.forEach(track => track.play()));
-    video.addEventListener('pause', () => tracks.forEach(track => track.pause()));
-    video.addEventListener('seeked', () => {
-      const currentTime = video.currentTime;
-      tracks.forEach(track => (track.currentTime = currentTime));
-    });
+    video.addEventListener('play', playAll);
+    video.addEventListener('pause', pauseAll);
 
-    // Handle Mute and Solo Buttons
-    document.querySelectorAll('.track-controls').forEach((control, index) => {
-      const muteBtn = control.querySelector('.mute-btn');
-      const soloBtn = control.querySelector('.solo-btn');
-      const volumeSlider = control.querySelector('.volume-slider');
-
-      // Mute Button
-      muteBtn.addEventListener('click', () => {
-        const track = tracks[index];
-        track.muted = !track.muted;
-        muteBtn.classList.toggle('muted', track.muted);
-      });
-
-      // Solo Button
-      soloBtn.addEventListener('click', () => {
-        if (soloedTrack.index === index) {
-          // Unsolo the track
-          soloedTrack.index = null;
-          tracks.forEach(track => (track.muted = false));
-          document.querySelectorAll('.solo-btn').forEach(btn => btn.classList.remove('soloed'));
-        } else {
-          // Solo the track
-          soloedTrack.index = index;
-          tracks.forEach((track, i) => (track.muted = i !== index));
-          document.querySelectorAll('.solo-btn').forEach((btn, i) => {
-            btn.classList.toggle('soloed', i === index);
-          });
+    // Mute or unmute individual track and update style
+    function muteToggle(trackNumber) {
+        const audio = audioTracks[trackNumber - 1];
+        const trackElement = trackElements[trackNumber - 1];
+        if (audio) {
+            audio.muted = !audio.muted;
+            trackElement.classList.toggle('muted', audio.muted);
         }
-      });
+    }
 
-      // Volume Slider
-      volumeSlider.addEventListener('input', e => {
-        tracks[index].volume = e.target.value;
-      });
-    });
+    // Solo or unsolo individual track and update style
+    function soloToggle(trackNumber) {
+        const audio = audioTracks[trackNumber - 1];
+        const trackElement = trackElements[trackNumber - 1];
 
-    // Handle Playback Speed
-    document.getElementById('speedControl').addEventListener('input', e => {
-      const speed = parseFloat(e.target.value);
-      video.playbackRate = speed;
-      soundtouchProcessors.forEach(({ soundtouch }) => (soundtouch.tempo = speed));
-    });
-  </script>
+        if (soloedTrack === trackNumber) {
+            // Unsolo if it's already soloed
+            soloedTrack = null;
+            audioTracks.forEach((audio, index) => {
+                if (audio) {
+                    audio.muted = false;
+                    trackElements[index].classList.remove('soloed');
+	trackElements[index].classList.remove('muted');
+                }
+            });
+        } else {
+            // Solo the selected track
+            soloedTrack = trackNumber;
+            audioTracks.forEach((audio, index) => {
+                if (audio) {
+                    audio.muted = (index !== trackNumber - 1);
+                    trackElements[index].classList.toggle('soloed', index === trackNumber - 1);
+                    trackElements[index].classList.toggle('muted', index !== trackNumber - 1);
+                }
+            });
+        }
+    }
+
+    // Set volume for individual track
+    function setVolume(trackNumber, volume) {
+        const audio = audioTracks[trackNumber - 1];
+        if (audio) {
+            audio.volume = volume;
+        }
+    }
+</script>
+
 </body>
 </html>
